@@ -5,7 +5,6 @@ date: "`r format(Sys.time(), '%d-%m-%Y')`"
 output: 
   html_document: 
     number_sections: yes
-    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -172,7 +171,7 @@ df_compare %>% ggplot(aes(x=C_COW_ALPHA, y=perc_confia)) +
 *Resposta:* Na Argentina, `r paste(round(df_compare$perc_confia[df_compare$C_COW_ALPHA == 'ARG'], 2), "%", sep="")` das pessoas confiam nos tribunais na Argentina. Já no Brasil, o resultado é mais positivo, com `r paste(round(df_compare$perc_confia[df_compare$C_COW_ALPHA == 'BRA'], 2), "%", sep="")` dos respondentes confiantes a respeito dos tribunais. Os resultados da pesquisa são estatisticamente diferentes, considerando que as estimativas intervalares dos países possuem valores distantes, calculadas com o nível de confiança de 95%. Isto é, repetindo a pesquisa infinitas vezes, 95% das médias da população da argentina estariam entre  `r paste(round((ci_se_arg$lower_ci)*100,2),"%", sep="")` e `r paste(round((ci_se_arg$upper_ci)*100,2),"%", sep="")` e para o Brasil, estariam entre `r paste(round((ci_se_bra$lower_ci)*100,2),"%", sep="")` e `r paste(round((ci_se_bra$upper_ci)*100,2),"%", sep="")`.
 
 # Produza um documento .html que apresente seu código com o resultado de sua análise. 
-[Documento HTML](here("./assignment/06-ds4ps-inference-assignment.html"))
+[Documento HTML](https://htmlpreview.github.io/?https://github.com/GeorgiaRibeiro/ds4ps/blob/main/06-ds4ps-inference/assignment/06-ds4ps-inference-assignment.html))
 
 
 **Observação**: Não se esqueça de colocar seu nome.

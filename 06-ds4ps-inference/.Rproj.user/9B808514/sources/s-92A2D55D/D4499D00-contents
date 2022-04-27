@@ -1,0 +1,226 @@
+---
+title: "05-ds4ps-maps"
+author: "Geórgia Ribeiro"
+date: "`r format(Sys.time(), '%d-%m-%Y')`"
+output: 
+  html_document:
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment {-}
+
+```{r packages, include=FALSE}
+library(ggrepel)
+library(gridExtra)
+library(lubridate)
+
+library(rgdal)
+library(maptools)
+library(ggmap)
+library(mapproj)
+library(geodist)
+library(ggplot2)
+library(viridis)
+
+#devtools::install_github("ipeaGIT/geobr", subdir = "r-package")
+library(geobr)
+library(sf)
+library(rio)
+
+library(stringr)
+library(maps)
+
+library(reshape2)
+library(readxl)
+library(tidyverse)
+library(here)
+```
+
+``` {r include= FALSE}
+# configuracao para desabilitar notacao cientifica
+options(scipen = 999)
+```
+
+# Com o pacote `geobr`, apresente um mapa do Brasil com a fronteira dos **municípios**. Você *não* precisa incluir dados, apenas o mapa municipal em qualquer ano disponível.
+
+``` {r echo=T, results='hide'}
+#base com todos os municipios
+mun = read_municipality(code_muni="all", year=2019)
+```
+
+``` {r message=FALSE, warning=FALSE, fig.align="center"}
+#plot mapa
+mun %>% ggplot() +
+  geom_sf()+
+  labs(title="Mapa municipios do Brasil - 2019 ")+
+  theme_minimal()
+```
+
+# Utilizando a base de dados `eleitas_por_estado_2018.xlsx`, presente na pasta `data`, apresente um mapa com o percentual de mulheres eleitas por estado. A variável `porcentagem_eleitas` possui tais dados. Além disso, você deve *interpretar* os resultados obtidos no mapa que você reproduziu.
+
+``` {r message=FALSE, warning=FALSE, fig.align="center"}
+#carregar base de dados
+eleitas_UF_completo = read_excel(here("data", "eleitas_por_estado_2018.xlsx"))
+eleitas_UF = eleitas_UF_completo %>% select('CD_GEOCODU', 'porcentagem_eleitas')
+
+df_mapa_eleitas = read_state(year=2018, showProgress = FALSE)
+df_mapa_eleitas = left_join(df_mapa_eleitas, eleitas_UF, by = c("code_state" = "CD_GEOCODU"))
+
+#plot mapa
+df_mapa_eleitas %>% ggplot() +
+  geom_sf(aes(fill = porcentagem_eleitas)) +
+  scale_fill_viridis() +
+  labs(title = "Mapa estados do Brasil", fill = "Mulheres eleitas (%)") +
+  theme_minimal()
+```
+
+``` {r include= FALSE}
+#interpretacao
+estado_max = eleitas_UF_completo$Estado[which.max(eleitas_UF_completo$porcentagem_eleitas)]
+perc_max = max(eleitas_UF_completo$porcentagem_eleitas)
+
+seg_estado_max = eleitas_UF_completo$Estado[order(eleitas_UF_completo$porcentagem_eleitas, decreasing = TRUE) ][2]
+seg_perc_max = eleitas_UF_completo$porcentagem_eleitas[order(eleitas_UF_completo$porcentagem_eleitas, decreasing = TRUE) ][2]
+
+estado_min_nonzero = eleitas_UF_completo$Estado[eleitas_UF_completo$porcentagem_eleitas  == min(eleitas_UF_completo$porcentagem_eleitas[eleitas_UF_completo$porcentagem_eleitas != 0])]
+
+perc_min_nonzero = eleitas_UF_completo$porcentagem_eleitas[eleitas_UF_completo$porcentagem_eleitas  == min(eleitas_UF_completo$porcentagem_eleitas[eleitas_UF_completo$porcentagem_eleitas != 0])]
+```
+
+**Interpretação:** Amazonas, Maranhão e Sergipe não tiveram mulheres eleitas. Dentre os que elegeram mulheres, o `r estado_max` ficou em primeiro lugar no ranking com `r paste(perc_max, "%", sep="")`, seguido do `r seg_estado_max` com `r paste(seg_perc_max, "%", sep="")`  e `r estado_min_nonzero` em último com apenas `r paste(perc_min_nonzero, "%", sep="")` de mulheres eleitas.
+
+# Utilizando a base de dados `cep_lon_lat.xlsx`, presente na pasta `data`, apresente um mapa do Brasil que tenha as fronteiras das Unidades Federativas com os pontos dos CEPs da turma.
+
+``` {r message=FALSE, warning=FALSE, fig.align="center"}
+#carregar tabela
+cep_turma = read_excel(here("data", "cep_lon_lat.xlsx"))
+
+mapa_estados = read_state(year=2018, showProgress = FALSE)
+
+#plot mapa
+mapa_estados %>% ggplot() +
+  geom_sf() +
+  geom_point(data = cep_turma, aes(lon, lat), color = "deeppink2", size = 1.5) +
+  labs(title = "Mapa do Brasil - CEP dos estudantes da turma", x = "", y = "")+
+  theme_minimal()
+```
+
+# Utilizando a base de dados `cep_lon_lat.xlsx`, presente na pasta `data`, apresente um mapa de Pernambuco com as fronteiras dos municípios, sem Fernando de Noronha e com os pontos dos CEPs da turma localizados nesta UF.
+
+``` {r cep_to_state packages, include=FALSE}
+#funcao do geobr atualizada
+cep_to_state <- function(cep){
+
+  # reference
+  # https://help.commerceplus.com.br/hc/pt-br/articles/115008224967-Faixas-de-CEP-por-Estado
+  # https://mundoeducacao.bol.uol.com.br/curiosidades/o-que-significam-os-numeros-cep.htm
+
+  cep <- gsub("-", "", cep)
+
+  suppressWarnings({ firstdigits1 <- as.numeric(substr(cep, 1,1)) })
+  suppressWarnings({ firstdigits2 <- as.numeric(substr(cep, 1,2)) })
+  suppressWarnings({ firstdigits3 <- as.numeric(substr(cep, 1,3)) })
+
+  if(is.na(firstdigits3)){stop("'cep' input must have numerical digits.")}
+
+  ifelse( firstdigits1 == 0,   'SP',   # Sao Paulo
+  ifelse( firstdigits1 == 1,   'SP',   # Sao Paulo
+  ifelse( firstdigits1 == 3,   'MG',   # Minas Gerais
+  ifelse( firstdigits1 == 9,   'RS',   # Rio Grande do Sul
+  ifelse( firstdigits2 ==29,   'Es',   # Espirito Santo
+  ifelse( firstdigits2 ==49,   'SE',   # Sergipe
+  ifelse( firstdigits2 ==64,   'PI',   # Piaui
+  ifelse( firstdigits2 ==65,   'MA',   # Maranhao
+  ifelse( firstdigits3 ==689,  'AP',   # Amapa
+  ifelse( firstdigits3 ==699,  'AC',   # Acre
+  ifelse( firstdigits3 ==693,  'RR',   # Roraima
+  ifelse( firstdigits2 ==77,   'TO',   # Tocantins
+  ifelse( firstdigits2 ==79,   'MS',   # Mato Grosso do Sul
+  ifelse( firstdigits2 ==78,   'MT',   # Mato Grosso
+  ifelse( firstdigits2 ==57,   'AL',   # Alagoas
+  ifelse( firstdigits2 ==58,   'PB',   # Paraiba
+  ifelse( firstdigits2 ==59,   'RN',   # Rio Grande do Norte
+  ifelse( firstdigits2 >=20  & firstdigits2 <=28,  'RJ', # Rio de Janeiro
+  ifelse( firstdigits2 >=40  & firstdigits2 <=48,  'BA', # Bahia
+  ifelse( firstdigits2 >=80  & firstdigits2 <=87,  'PR', # Parana
+  ifelse( firstdigits2 >=88  & firstdigits2 <=89,  'SC', # Santa Catarina
+  ifelse( firstdigits2 >=50  & firstdigits2 <=56,  'PE', # Pernambuco
+  ifelse( firstdigits2 >=60  & firstdigits2 <=63,  'CE', # ceara
+  ifelse( firstdigits2 >=66  & firstdigits2 <=68,  'PA', # Para
+  ifelse( firstdigits3 >=690 & firstdigits3 <=692, 'AM', # Amazonas
+  ifelse( firstdigits3 >=694 & firstdigits3 <=698, 'AM', # Amazonas
+  ifelse( firstdigits3 >=700 & firstdigits3 <=727, 'DF', # Distrito Federal
+  ifelse( firstdigits3 >=730 & firstdigits3 <=736, 'DF', # Distrito Federal
+  ifelse( firstdigits3 >=768 & firstdigits3 <=769, 'RO', # Rondonia
+  ifelse( firstdigits3 >=728 & firstdigits3 <=729, 'GO', # Goias
+  ifelse( firstdigits3 >=737 & firstdigits3 <=767, 'GO', 'ERROR')))))))))))))))))))))))))))))))
+}
+```
+
+``` {r message=FALSE, warning=FALSE, fig.align="center"}
+#identificar codigo PE no geobr
+metadata = download_metadata()
+
+#estados de cada CEP
+cep_turma = cep_turma %>% mutate(UF = cep_to_state(cep_turma$cep))
+
+#selecionar mapa PE
+mapa_pe = read_municipality(code_muni=26, year=2019)
+
+#plot mapa
+mapa_pe %>% 
+  filter (code_muni != '2605459') %>% ggplot() +
+  geom_sf() +
+  geom_point(data = filter(cep_turma, UF == 'PE'), aes(lon, lat), color = "deeppink2", size = 1.5) + 
+  labs(title = "Mapa de Pernambuco - CEP dos estudantes da turma", x = "", y = "")+
+  theme_minimal()
+```
+
+# **Exercício extra!** Utilizando a base de dados `cep_lon_lat.xlsx`, construa uma matriz de distância em quilômetros, apresente um gráfico de calor que ilustre a distância entre os CEPs e responda: Quais são dos dois CEPs mais distantes?
+
+``` {r message=FALSE, warning=FALSE, fig.align="center"}
+#carregar base
+cep_turma = read_excel(here("data", "cep_lon_lat.xlsx"))
+
+#calcular distancias (pct geodist)
+distance_matrix = geodist(cep_turma, measure = 'geodesic')/1000 #converter para km
+
+colnames(distance_matrix) = cep_turma$cep
+rownames(distance_matrix) = cep_turma$cep
+
+#formatar matrix para df (pct reshape2)
+melted_matrix = melt(distance_matrix)
+melted_matrix$Var1 = as.factor(melted_matrix$Var1)
+melted_matrix$Var2 = as.factor(melted_matrix$Var2)
+melted_matrix = melted_matrix  %>% mutate_if(is.numeric, round)
+
+#heatmap
+ggplot(data = melted_matrix, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() +
+  scale_fill_viridis() +
+  labs(title ="Mapa de calor - Distância entre CEPs", x="", y="", fill = "Distância (km)") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+**Resposta:** Os CEPs mais distantes são `r melted_matrix$Var1[which.max(melted_matrix$value)]` e `r melted_matrix$Var2[which.max(melted_matrix$value)]`, distantes `r max(melted_matrix$value)` km entre si. Localizados, respectivamente, na `r cep_to_state(melted_matrix$Var1[which.max(melted_matrix$value)])` e na `r cep_to_state(melted_matrix$Var2[which.max(melted_matrix$value)])`.
+
+# **ATENÇÃO** {-}
+
+- A nota do exercício extra pode ser utilizada para substituir sua pior nota nas tarefas, garantindo nível imediatamente mais alto a depender de seu desempenho. A resposta para o exercício extra não será fornecida.
+
+- Utilize o botão `Knit` e produza um documento `.html` com o resultado.
+
+- Não apresente seu código no documento `.html`.
+
+- A resposta para o exercício extra não será fornecida.
+
+- O documento de **entrega** deve ser em formato **`.rmd`**.
+
+- Não se esqueça de colocar seu nome.
+
+- Seu documento deve ser replicável, 

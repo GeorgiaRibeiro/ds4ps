@@ -1,0 +1,12 @@
+"0","## maior desconfiança
+desconfianca_respostas = wvs %>%
+  select(C_COW_ALPHA, A_YEAR, Q66) %>%
+  mutate(desconfia_imprensa = case_when(Q66 %in% c(3, 4) ~ 1,TRUE ~ 0)) %>%
+  group_by(C_COW_ALPHA, desconfia_imprensa) %>%
+  summarise(n = n()) %>%
+  mutate(perc_desconfia = round(n/sum(n),2)) %>%
+  select(C_COW_ALPHA, perc_desconfia) %>%
+  arrange(desc(perc_desconfia))
+"
+"1","[38;5;232m`summarise()` has grouped output by 'C_COW_ALPHA'. You can override using the `.groups` argument.[39m
+"

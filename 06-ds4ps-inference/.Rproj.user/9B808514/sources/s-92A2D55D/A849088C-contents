@@ -1,0 +1,88 @@
+---
+title: "02-ds4ps-data-wrangling"
+author: "Geórgia Ribeiro"
+date: "`r format(Sys.time(), '%d-%m-%Y')`"
+output: 
+  html_document:
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!--- Use o code chunk abaixo para carregar os pacotes que irá utilizar no script --->
+
+```{r pck, echo=FALSE, warning=FALSE, message=FALSE}
+if(require(readxl) == F) install.packages('readxl'); require(readxl)
+if(require(here) == F) install.packages('here'); require(here)
+if(require(tidyverse) == F) install.packages('tidyverse'); require(tidyverse)
+if(require(kableExtra) == F) install.packages('kableExtra'); require(kableExtra)
+```
+
+# Assignment {-}
+
+> ["De acordo com o art. 5^o^ da Lei Maria da Penha, violência doméstica e familiar  contra a mulher é 'qualquer ação ou omissão baseada no gênero que lhe cause morte, lesão, sofrimento físico, sexual ou psicológico e dano moral ou patrimonial'"](https://www.institutomariadapenha.org.br/violencia-domestica/o-que-e-violencia-domestica.html). 
+
+# Em Pernambuco, a Secretaria de Defesa Social (SDS) disponibiliza dados de fácil acesso contendo informações sobre todos os municípios do Estado. Você pode consultar mais informações [aqui](https://www.sds.pe.gov.br/estatisticas/40-estatisticas/178-violencia-domestica-e-familiar-contra-a-mulher).
+
+No ano de 2021, foram registrados pelo menos 27048 casos em todo o Estado. A base de dados está na pasta `/data`^[A base de dados original foi editada para fins pedagógicos.]. Você pode utilizar a função `read_excel()` do pacote `readxl` para abrir essa base.
+
+Imagine que todos os gestores municipais de Pernambuco estejam reunidos para debater sobre políticas públicas em prol das mulheres e desejam saber o número e a porcentagem de ocorrências em cada **região** que ocorreram no ano de 2021. Note que são **5** regiões: AGRESTE, CAPITAL, METROPOLITANA, SERTAO^[O acento da palavra SERTÃO foi retirado para facilitar o desenvolvimento do código.] e ZONA DA MATA. 
+
+> **Sua tarefa é:**
+
+- Importar a base de dados `violencia-domestica-pe.xlsx`;
+- Apresentar os dados que os gestores desejam em uma *TABELA* (número absoluto de casos e porcentagem por região). Para apresentar a tabela, você pode utilizar o pacote `kableExtra` (já indicado no início da atividade) com a função `kableExtra` conforme segue: `kable(seu_objeto) %>% kable_styling()`. A tabela deve conter **3 colunas** na seguinte ordem: região, quantidade e porcentagem.
+- Os resultados devem estar *ordenados* pela porcentagem de casos.
+
+Utilize o *code chunk* abaixo para desenvolver sua resposta.
+
+```{r message=FALSE, warning=FALSE}
+
+#importar base
+base = read_excel(here('data', 'violencia-domestica-pe.xlsx'))
+
+#tabela para gestores
+tabela = base %>% filter(ano == 2021) %>%
+                  group_by(regiao) %>%
+                  summarise(quantidade_ocorrencias = n()) %>%
+                  mutate(percentual_ocorrencias =
+                         round((quantidade_ocorrencias/sum(quantidade_ocorrencias))*100, 2)) %>%
+                  arrange(desc(percentual_ocorrencias))
+
+kable(tabela) %>% kable_styling() 
+``` 
+
+# Qual a região com o maior percentual de casos de violência contra a mulher?
+
+*Resposta:* Região Metropolitana
+
+# Qual a região com o menor percentual de casos de violência contra a mulher?
+
+*Resposta:* Região Zona da Mata
+
+# Apresente uma tabela que indique a quantidade de violência doméstica em todo o Estado de Pernambuco por ano que consta na base de dados.
+
+```{r}
+tabela2 = base %>% group_by(ano) %>%
+                   summarise(quantidade_ocorrencias = n())
+
+kable(tabela2) %>% kable_styling() 
+```
+
+
+
+# **ATENÇÃO** {-}
+
+- Utilize o botão `Knit` e produza um documento .html com o resultado.
+
+- O documento de **entrega** deve ser em formato **.Rmd**.
+
+- Não se esqueça de colocar seu nome.
+
+- Seu documento deve ser 100% REPLICÁVEL!! 
+
+- O código de sua resposta DEVE vir no *code chunk*. Sim, você pode, caso queira, escrever um texto indicando o resultado obtido pelo seu código!
+
+- Não se esqueça de carregar todos os pacotes necessários!

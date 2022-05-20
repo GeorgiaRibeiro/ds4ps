@@ -2,7 +2,7 @@
 title: "Data Analysis for Social Science: A Friendly Introduction"
 subtitle: "Capítulo 5 "  
 author: 
-  - "Alexia Saldanha"
+  - "Alexsandra Cavalcanti"
   - "Geórgia Ribeiro"
   - "Mayres Pequeno"
 date: "`r format(Sys.time(), '%d-%m-%Y')`"
